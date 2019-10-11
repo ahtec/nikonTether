@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# To make things work,  you need to have an image somewhere on your 
+# local machine that is used as the FIRST image displayed with ktether
+# is launched.  Personally I use a NEF file of my logo.. so when I 
+# start ktether in a fresh directory it is displayed before the first 
+# shot is taken. I'm Nikon so I use NEF
+placeholder_image=/home/darin/bin/placeHolder.jpg
+
+#gvfs-mount -l | grep  usb |tail -n1 |  cut -d"/"  -f3 | cut -c 2-12
+# gvfs-mount -l | grep  usb |tail -n1 |  cut -d"/"  -f3   geeft [usb:002,013]
+#gvfs-mount -l | grep  usb |tail -n1 | cut -d">" -f2   geeft
+# gphoto2://[usb:002,013]/
+#x=`ls /run/user/1000/gvfs`
+#y=`gvfs-mount -u /run/user/1000/gvfs/`$x
+
+# unmounting  camera
+mountpunt=$(gvfs-mount -l | grep  usb |tail -n1 | cut -d">" -f2)
+gvfs-mount -u $mountpunt
+
+#Store first argument in a local file to be used as a file prefix. Blank is ok.
+# if there isn't a config file create one
+
+if [ ! -f "session.conf" ]; then
+	if [ -z "$1" ];then
+		echo "file_prefix=pic" > session.conf
+	else
+		echo "file_prefix=$1" > session.conf
+	fi
+	echo "last_file_number=0" >> session.conf
+fi
+dir=$(pwd)
+echo $dir
+if [ -d "$dir" ]; then
+    nefDir=$dir/nefs
+    jpgDir=$dir/jpgs
+    if [ -d "$nefDir" ]; then
+        echo $nefDir
+    else
+        mkdir $nefDir
+        echo "NEF directory gemaakt" $nefDir
+    fi
+    if [ -d "$jpgDir" ]; then
+        echo $jpgDir
+    else
+        mkdir $jpgDir
+        echo "JPG directory gemaakt" $jpgDir
+    fi
+fi
+
+# Do  setup if can't find evidence of old tether
+if [ ! -f  ${jpgDir}/preview.jpg ]; then
+	cp $placeholder_image  ${jpgDir}/preview.jpg
+    echo "preview jpg is gekopieerd"
+fi
+
+# Open preview.jpg in geeqie (unless it's already running)
+if ! pgrep -x "geeqie" > /dev/null
+then
+    geeqie ${jpgDir}/preview.jpg & 
+fi
+# Launch gphoto to capture files from camera invoking hook script
+
+gphoto2 --capture-tethered --hook-script=/home/darin/bin/ktether-hook.sh
+###(( speaker-test -t sine -f 1000 )& pid=$! ; sleep 0.5s ; kill -9 $pid) >>/dev/null
+##sleep 5s 
+###ktether
